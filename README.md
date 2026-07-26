@@ -1,82 +1,124 @@
 # DocuBot
 
-DocuBot is a small documentation assistant that helps answer developer questions about a codebase.  
-It can operate in three different modes:
+DocuBot is a lightweight Retrieval-Augmented Generation (RAG) assistant that answers developer questions using local project documentation. It supports three different modes to demonstrate the differences between naive generation, document retrieval, and Retrieval-Augmented Generation (RAG).
 
-1. **Naive LLM mode**  
-   Sends the entire documentation corpus to a Gemini model and asks it to answer the question.
+The project uses Markdown documentation stored in the `docs/` folder to simulate a software project's internal documentation.
 
-2. **Retrieval only mode**  
-   Uses a simple indexing and scoring system to retrieve relevant snippets without calling an LLM.
+---
 
-3. **RAG mode (Retrieval Augmented Generation)**  
-   Retrieves relevant snippets, then asks Gemini to answer using only those snippets.
+## Features
 
-The docs folder contains realistic developer documents (API reference, authentication notes, database notes), but these files are **just text**. They support retrieval experiments and do not require students to set up any backend systems.
+### 1. Naive LLM Mode
+- Sends the entire documentation corpus directly to Gemini.
+- Does not perform retrieval.
+- Demonstrates how an LLM can produce fluent but sometimes weakly grounded answers.
+
+### 2. Retrieval Only Mode
+- Searches the documentation using a simple keyword-based retrieval system.
+- Builds a basic inverted index.
+- Scores document paragraphs using keyword matching.
+- Returns the most relevant snippets without using an LLM.
+
+### 3. RAG Mode
+- Retrieves the most relevant documentation snippets first.
+- Sends only those snippets to Gemini.
+- Generates answers grounded in the retrieved evidence.
+
+---
+
+## Retrieval System
+
+The retrieval pipeline consists of three stages:
+
+1. **Index Construction**
+   - Loads all Markdown documents from the `docs/` folder.
+   - Builds a simple inverted index mapping words to the documents in which they appear.
+
+2. **Document Scoring**
+   - Converts queries to lowercase.
+   - Removes punctuation and common stop words.
+   - Scores document paragraphs by counting meaningful keyword matches.
+
+3. **Snippet Retrieval**
+   - Splits documents into paragraphs.
+   - Returns the highest-scoring paragraphs instead of entire documents.
+   - Returns "I do not know based on these docs." when no relevant evidence is found.
 
 ---
 
 ## Setup
 
-### 1. Install Python dependencies
+### 1. Install dependencies
 
-    pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+```
 
 ### 2. Configure environment variables
 
-Copy the example file:
+Create a `.env` file and add your Gemini API key:
 
-    cp .env.example .env
+```text
+GEMINI_API_KEY=your_api_key_here
+```
 
-Then edit `.env` to include your Gemini API key:
+Gemini is only required for:
+- Mode 1 (Naive LLM)
+- Mode 3 (RAG)
 
-    GEMINI_API_KEY=your_api_key_here
-
-If you do not set a Gemini key, you can still run retrieval only mode.
+Retrieval Only mode works without a Gemini API key.
 
 ---
 
 ## Running DocuBot
 
-Start the program:
+Start the application:
 
-    python main.py
+```bash
+python3 main.py
+```
 
-Choose a mode:
+Choose one of the available modes:
 
-- **1**: Naive LLM (Gemini reads the full docs)  
-- **2**: Retrieval only (no LLM)  
-- **3**: RAG (retrieval + Gemini)
+| Mode | Description |
+|------|-------------|
+| 1 | Naive LLM over the full documentation corpus |
+| 2 | Retrieval Only (no LLM) |
+| 3 | Retrieval-Augmented Generation (RAG) |
 
-You can use built in sample queries or type your own.
-
----
-
-## Running Retrieval Evaluation (optional)
-
-    python evaluation.py
-
-This prints simple retrieval hit rates for sample queries.
+You can either:
+- Press **Enter** to run the built-in sample queries, or
+- Enter your own custom question.
 
 ---
 
-## Modifying the Project
+## Project Structure
 
-You will primarily work in:
+| File | Purpose |
+|------|---------|
+| `docubot.py` | Retrieval system, indexing, scoring, and RAG pipeline |
+| `llm_client.py` | Gemini client and prompting logic |
+| `dataset.py` | Sample evaluation queries |
+| `evaluation.py` | Retrieval evaluation script |
+| `docs/` | Project documentation used for retrieval |
 
-- `docubot.py`  
-  Implement or improve the retrieval index, scoring, and snippet selection.
+---
 
-- `llm_client.py`  
-  Adjust the prompts and behavior of LLM responses.
+## Guardrails
 
-- `dataset.py`  
-  Add or change sample queries for testing.
+DocuBot includes several simple guardrails to improve reliability:
+
+- Ignores common stop words during scoring.
+- Retrieves paragraph-level snippets instead of entire documents.
+- Refuses to answer when no meaningful evidence is found.
+- RAG mode instructs Gemini to answer only from retrieved documentation.
 
 ---
 
 ## Requirements
 
 - Python 3.9+
-- A Gemini API key for LLM features (only needed for modes 1 and 3)
-- No database, no server setup, no external services besides LLM calls
+- `python-dotenv`
+- Gemini API key (Modes 1 and 3 only)
+
+No database or backend services are required. All documentation is stored locally inside the `docs/` folder.
