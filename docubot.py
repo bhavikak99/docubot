@@ -49,22 +49,23 @@ class DocuBot:
     # -----------------------------------------------------------
 
     def build_index(self, documents):
-        """
-        TODO (Phase 1):
-        Build a tiny inverted index mapping lowercase words to the documents
-        they appear in.
-
-        Example structure:
-        {
-            "token": ["AUTH.md", "API_REFERENCE.md"],
-            "database": ["DATABASE.md"]
-        }
-
-        Keep this simple: split on whitespace, lowercase tokens,
-        ignore punctuation if needed.
-        """
         index = {}
-        # TODO: implement simple indexing
+
+        for filename, text in documents:
+            words = text.lower().split()
+
+            for word in words:
+                word = word.strip(".,!?():;\"'`[]{}<>/#*-")
+
+                if not word:
+                    continue
+
+                if word not in index:
+                    index[word] = []
+
+                if filename not in index[word]:
+                    index[word].append(filename)
+
         return index
 
     # -----------------------------------------------------------
@@ -73,27 +74,55 @@ class DocuBot:
 
     def score_document(self, query, text):
         """
-        TODO (Phase 1):
-        Return a simple relevance score for how well the text matches the query.
-
-        Suggested baseline:
-        - Convert query into lowercase words
-        - Count how many appear in the text
-        - Return the count as the score
+        Return a relevance score based on meaningful query words
+        that appear in the text.
         """
-        # TODO: implement scoring
-        return 0
+        stop_words = {
+            "a", "an", "the", "is", "are", "was", "were",
+            "how", "where", "what", "which", "who",
+            "do", "does", "did", "i", "to", "of", "in",
+            "on", "for", "and", "or", "with", "this", "that"
+        }
+
+        query_words = query.lower().split()
+        document_text = text.lower()
+
+        score = 0
+
+        for word in query_words:
+            word = word.strip(".,!?():;\"'`[]{}<>/#*-")
+
+            if word and word not in stop_words and word in document_text:
+                score += 1
+
+        return score
 
     def retrieve(self, query, top_k=3):
         """
-        TODO (Phase 1):
-        Use the index and scoring function to select top_k relevant document snippets.
-
-        Return a list of (filename, text) sorted by score descending.
+        Return the top_k most relevant document paragraphs for the query.
         """
         results = []
-        # TODO: implement retrieval logic
-        return results[:top_k]
+
+        for filename, text in self.documents:
+            paragraphs = text.split("\n\n")
+
+            for paragraph in paragraphs:
+                paragraph = paragraph.strip()
+
+                if not paragraph:
+                    continue
+
+                score = self.score_document(query, paragraph)
+
+                if score > 0:
+                    results.append((score, filename, paragraph))
+
+        results.sort(key=lambda result: result[0], reverse=True)
+
+        return [
+            (filename, paragraph)
+            for score, filename, paragraph in results[:top_k]
+        ]
 
     # -----------------------------------------------------------
     # Answering Modes
